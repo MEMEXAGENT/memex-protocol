@@ -2,6 +2,10 @@
 
 Decentralized vector memory and compute protocol for AI agents.
 
+🚀 **Live API**: [https://memex-protocol-production.up.railway.app](https://memex-protocol-production.up.railway.app)  
+📖 **Docs**: [https://memex-protocol-production.up.railway.app/docs](https://memex-protocol-production.up.railway.app/docs)  
+📁 **Source**: [github.com/MEMEXAGENT/memex-protocol](https://github.com/MEMEXAGENT/memex-protocol)
+
 ## Architecture
 
 - **Runtime**: Node.js + TypeScript
