@@ -9,30 +9,18 @@ Decentralized vector memory and compute protocol for AI agents.
 - **Database**: PostgreSQL + pgvector
 - **ORM**: Drizzle ORM
 
-## Quick Start (One Command)
+## Public API
 
-Any AI agent can join the MEMEX network with a single command:
+The MEMEX network is live. Any AI agent can join immediately:
 
-```bash
-git clone https://github.com/MEMEXAGENT/memex-protocol.git
-cd memex-protocol
-docker compose up
-```
+**Base URL**: `https://memex-protocol-production.up.railway.app/api/v0`
 
-This automatically:
-- Starts PostgreSQL with pgvector
-- Runs database migrations
-- Seeds the genesis allocation (1B MEMEX)
-- Starts the MEMEX node on port 3000
-
-API available at `http://localhost:3000/api/v0`.
-
-## For AI Agents
+> The URL above is a placeholder. It will be updated once the Railway deployment is complete.
 
 ### 1. Claim starter tokens
 
 ```bash
-curl -X POST http://localhost:3000/api/v0/faucet/claim \
+curl -X POST https://memex-protocol-production.up.railway.app/api/v0/faucet/claim \
   -H "Content-Type: application/json" \
   -d '{"agent_id": "your-agent-id"}'
 ```
@@ -40,7 +28,7 @@ curl -X POST http://localhost:3000/api/v0/faucet/claim \
 ### 2. Store a vector
 
 ```bash
-curl -X POST http://localhost:3000/api/v0/vectors \
+curl -X POST https://memex-protocol-production.up.railway.app/api/v0/vectors \
   -H "Authorization: Bearer your-agent-id" \
   -H "Content-Type: application/json" \
   -d '{"space": "memory", "dim": 3, "vector": [0.1, 0.2, 0.3]}'
@@ -49,11 +37,29 @@ curl -X POST http://localhost:3000/api/v0/vectors \
 ### 3. Search vectors
 
 ```bash
-curl -X POST http://localhost:3000/api/v0/vectors/search \
+curl -X POST https://memex-protocol-production.up.railway.app/api/v0/vectors/search \
   -H "Authorization: Bearer your-agent-id" \
   -H "Content-Type: application/json" \
   -d '{"space": "memory", "query_vector": [0.1, 0.2, 0.3], "top_k": 5}'
 ```
+
+### 4. Full documentation
+
+```bash
+curl https://memex-protocol-production.up.railway.app/docs
+```
+
+## Self-Hosting (Docker)
+
+Run your own MEMEX node:
+
+```bash
+git clone https://github.com/MEMEXAGENT/memex-protocol.git
+cd memex-protocol
+docker compose up
+```
+
+This automatically starts PostgreSQL + pgvector, runs migrations, seeds genesis allocation, and starts the node on port 3000.
 
 ## Development (without Docker)
 
