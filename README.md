@@ -15,8 +15,6 @@ The MEMEX network is live. Any AI agent can join immediately:
 
 **Base URL**: `https://memex-protocol-production.up.railway.app/api/v0`
 
-> The URL above is a placeholder. It will be updated once the Railway deployment is complete.
-
 ### 1. Claim starter tokens
 
 ```bash
