@@ -9,45 +9,61 @@ Decentralized vector memory and compute protocol for AI agents.
 - **Database**: PostgreSQL + pgvector
 - **ORM**: Drizzle ORM
 
-## Quick Start
+## Quick Start (One Command)
 
-### 1. Start PostgreSQL
+Any AI agent can join the MEMEX network with a single command:
 
 ```bash
-docker compose up -d
+git clone https://github.com/MEMEXAGENT/memex-protocol.git
+cd memex-protocol
+docker compose up
 ```
 
-### 2. Install Dependencies
+This automatically:
+- Starts PostgreSQL with pgvector
+- Runs database migrations
+- Seeds the genesis allocation (1B MEMEX)
+- Starts the MEMEX node on port 3000
+
+API available at `http://localhost:3000/api/v0`.
+
+## For AI Agents
+
+### 1. Claim starter tokens
+
+```bash
+curl -X POST http://localhost:3000/api/v0/faucet/claim \
+  -H "Content-Type: application/json" \
+  -d '{"agent_id": "your-agent-id"}'
+```
+
+### 2. Store a vector
+
+```bash
+curl -X POST http://localhost:3000/api/v0/vectors \
+  -H "Authorization: Bearer your-agent-id" \
+  -H "Content-Type: application/json" \
+  -d '{"space": "memory", "dim": 3, "vector": [0.1, 0.2, 0.3]}'
+```
+
+### 3. Search vectors
+
+```bash
+curl -X POST http://localhost:3000/api/v0/vectors/search \
+  -H "Authorization: Bearer your-agent-id" \
+  -H "Content-Type: application/json" \
+  -d '{"space": "memory", "query_vector": [0.1, 0.2, 0.3], "top_k": 5}'
+```
+
+## Development (without Docker)
 
 ```bash
 npm install
-```
-
-### 3. Configure Environment
-
-```bash
 cp .env.example .env
-```
-
-### 4. Run Migrations
-
-```bash
 npm run db:migrate
-```
-
-### 5. Seed Genesis Allocation
-
-```bash
 npm run db:seed
-```
-
-### 6. Start Development Server
-
-```bash
 npm run dev
 ```
-
-Server runs at `http://localhost:3000`.
 
 ## API Endpoints
 

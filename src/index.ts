@@ -11,6 +11,7 @@ import { governanceRoutes } from "./routes/governance.js";
 import { configRoutes } from "./routes/config.js";
 import { nodeRoutes } from "./routes/node.js";
 import { peerRoutes } from "./routes/peers.js";
+import { founderRoutes } from "./routes/founder.js";
 
 const app = Fastify({ logger: true });
 
@@ -39,6 +40,7 @@ await app.register(governanceRoutes, { prefix: "/api/v0" });
 await app.register(configRoutes, { prefix: "/api/v0" });
 await app.register(nodeRoutes, { prefix: "/api/v0" });
 await app.register(peerRoutes, { prefix: "/api/v0" });
+await app.register(founderRoutes, { prefix: "/api/v0" });
 
 app.get("/health", async () => ({ status: "ok", version: "0.1.0" }));
 

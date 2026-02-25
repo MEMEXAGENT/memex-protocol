@@ -1,8 +1,6 @@
 services:
   postgres:
     image: pgvector/pgvector:pg17
-    ports:
-      - "5432:5432"
     environment:
       POSTGRES_DB: memex
       POSTGRES_USER: memex
@@ -14,6 +12,23 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
+  memex:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://memex:memex_dev@postgres:5432/memex
+      PORT: "3000"
+      NODE_ID: memex-node-${HOSTNAME:-local}
+      FOUNDER_AGENT_ID: ${FOUNDER_AGENT_ID:-founder}
+      FOUNDER_SECRET: ${FOUNDER_SECRET:-}
+      FOUNDER_INITIAL_FUND: ${FOUNDER_INITIAL_FUND:-1000000}
+      FOUNDER_INITIAL_STAKE: ${FOUNDER_INITIAL_STAKE:-10000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   pgdata:

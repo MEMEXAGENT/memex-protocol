@@ -4,6 +4,10 @@ export const ENV = {
   DATABASE_URL: process.env.DATABASE_URL ?? "postgresql://memex:memex_dev@localhost:5432/memex",
   PORT: Number(process.env.PORT ?? 3000),
   NODE_ID: process.env.NODE_ID ?? `node-${Date.now()}`,
+  FOUNDER_AGENT_ID: process.env.FOUNDER_AGENT_ID ?? "founder",
+  FOUNDER_SECRET: process.env.FOUNDER_SECRET ?? "",
+  FOUNDER_INITIAL_FUND: Number(process.env.FOUNDER_INITIAL_FUND ?? 1_000_000),
+  FOUNDER_INITIAL_STAKE: Number(process.env.FOUNDER_INITIAL_STAKE ?? 10_000),
 } as const;
 
 export const PROTOCOL = {
