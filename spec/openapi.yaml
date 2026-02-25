@@ -289,6 +289,38 @@ components:
         peers:
           type: integer
 
+    StakingResult:
+      type: object
+      properties:
+        status:
+          type: string
+        agent_id:
+          type: string
+        amount_staked:
+          type: number
+        amount_unstaked:
+          type: number
+        total_staked:
+          type: number
+        is_validator:
+          type: boolean
+
+    StakingStatus:
+      type: object
+      properties:
+        agent_id:
+          type: string
+        staked:
+          type: number
+        available:
+          type: number
+        balance:
+          type: number
+        is_validator:
+          type: boolean
+        min_stake_required:
+          type: number
+
     PeerList:
       type: object
       properties:
@@ -607,6 +639,69 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/NodeStatus"
+
+  /staking/stake:
+    post:
+      operationId: stake
+      summary: Stake MEMEX to become a validator
+      tags: [Staking]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount]
+              properties:
+                amount:
+                  type: number
+      responses:
+        "200":
+          description: Staked successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StakingResult"
+        "400":
+          description: Invalid amount or insufficient balance
+
+  /staking/unstake:
+    post:
+      operationId: unstake
+      summary: Unstake MEMEX
+      tags: [Staking]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount]
+              properties:
+                amount:
+                  type: number
+      responses:
+        "200":
+          description: Unstaked successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StakingResult"
+        "400":
+          description: Invalid amount or insufficient stake
+
+  /staking/status:
+    get:
+      operationId: getStakingStatus
+      summary: Get staking status for authenticated agent
+      tags: [Staking]
+      responses:
+        "200":
+          description: Staking status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StakingStatus"
 
   /peers:
     get:
