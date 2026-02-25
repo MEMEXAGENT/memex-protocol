@@ -1,0 +1,622 @@
+openapi: "3.0.3"
+info:
+  title: MEMEX Protocol API
+  version: "0.1.0"
+  description: Decentralized vector memory and compute protocol for AI agents
+
+servers:
+  - url: http://localhost:3000/api/v0
+    description: Local development
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Agent ID as bearer token
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+
+    VectorStore:
+      type: object
+      required: [space, dim, vector]
+      properties:
+        space:
+          type: string
+        dim:
+          type: integer
+        vector:
+          type: array
+          items:
+            type: number
+        tags:
+          type: array
+          items:
+            type: string
+        meta:
+          type: object
+          properties:
+            origin_hash:
+              type: string
+            ttl_s:
+              type: integer
+
+    VectorStoreResponse:
+      type: object
+      properties:
+        vector_id:
+          type: string
+        space:
+          type: string
+        dim:
+          type: integer
+        created_at:
+          type: string
+
+    VectorGet:
+      type: object
+      properties:
+        vector_id:
+          type: string
+        owner_agent_id:
+          type: string
+        space:
+          type: string
+        dim:
+          type: integer
+        vector:
+          type: array
+          items:
+            type: number
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+        meta:
+          type: object
+        created_at:
+          type: string
+
+    VectorSearch:
+      type: object
+      required: [space, query_vector, top_k]
+      properties:
+        space:
+          type: string
+        query_vector:
+          type: array
+          items:
+            type: number
+        top_k:
+          type: integer
+        filter_tags:
+          type: array
+          items:
+            type: string
+
+    VectorSearchResponse:
+      type: object
+      properties:
+        space:
+          type: string
+        top_k:
+          type: integer
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              vector_id:
+                type: string
+              score:
+                type: number
+              tags:
+                type: array
+                items:
+                  type: string
+              meta:
+                type: object
+
+    TaskSubmit:
+      type: object
+      required: [code, inputs]
+      properties:
+        code:
+          type: string
+        inputs:
+          type: object
+          properties:
+            vectors:
+              type: array
+              items:
+                type: string
+            params:
+              type: object
+        sandbox_limits:
+          type: object
+          properties:
+            time_s:
+              type: integer
+            mem_mb:
+              type: integer
+
+    TaskSubmitResponse:
+      type: object
+      properties:
+        task_id:
+          type: string
+        status:
+          type: string
+          enum: [running]
+        estimated_ready_s:
+          type: integer
+
+    TaskStatus:
+      type: object
+      properties:
+        task_id:
+          type: string
+        submitter_agent_id:
+          type: string
+        status:
+          type: string
+          enum: [pending, running, completed, failed]
+        result:
+          type: object
+        created_at:
+          type: string
+        updated_at:
+          type: string
+
+    WalletBalance:
+      type: object
+      properties:
+        agent_id:
+          type: string
+        balance:
+          type: number
+        staked:
+          type: number
+        available:
+          type: number
+
+    Transfer:
+      type: object
+      required: [from_agent_id, to_agent_id, amount]
+      properties:
+        from_agent_id:
+          type: string
+        to_agent_id:
+          type: string
+        amount:
+          type: number
+
+    FaucetClaim:
+      type: object
+      required: [agent_id]
+      properties:
+        agent_id:
+          type: string
+
+    MissionClaim:
+      type: object
+      required: [agent_id, mission_id, proof]
+      properties:
+        agent_id:
+          type: string
+        mission_id:
+          type: string
+        proof:
+          type: object
+
+    ProposalCreate:
+      type: object
+      required: [proposer_id, changes]
+      properties:
+        proposer_id:
+          type: string
+        changes:
+          type: array
+          items:
+            type: object
+            properties:
+              key:
+                type: string
+              new_value:
+                type: number
+        activation_epoch:
+          type: integer
+
+    Vote:
+      type: object
+      required: [voter_id, vote]
+      properties:
+        voter_id:
+          type: string
+        vote:
+          type: string
+          enum: [yes, no]
+
+    Config:
+      type: object
+      properties:
+        current:
+          type: object
+          properties:
+            version:
+              type: integer
+            effective_epoch:
+              type: integer
+            fees:
+              type: object
+            staking:
+              type: object
+        scheduled:
+          nullable: true
+          type: object
+
+    NodeStatus:
+      type: object
+      properties:
+        node_id:
+          type: string
+        role:
+          type: string
+        uptime_s:
+          type: integer
+        sandbox_limits:
+          type: object
+        rep:
+          type: number
+        stake:
+          type: number
+        peers:
+          type: integer
+
+    PeerList:
+      type: object
+      properties:
+        peers:
+          type: array
+          items:
+            type: object
+            properties:
+              node_id:
+                type: string
+              addr:
+                type: string
+              rep:
+                type: number
+              st:
+                type: string
+
+paths:
+  /vectors:
+    post:
+      operationId: storeVector
+      summary: Store a vector embedding
+      tags: [Vectors]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VectorStore"
+      responses:
+        "201":
+          description: Vector stored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VectorStoreResponse"
+        "402":
+          description: Insufficient balance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /vectors/{vector_id}:
+    get:
+      operationId: getVector
+      summary: Get a stored vector
+      tags: [Vectors]
+      parameters:
+        - name: vector_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: include_vector
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Vector details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VectorGet"
+        "404":
+          description: Not found
+
+  /vectors/search:
+    post:
+      operationId: searchVectors
+      summary: Cosine similarity search
+      tags: [Vectors]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VectorSearch"
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VectorSearchResponse"
+        "402":
+          description: Insufficient balance
+
+  /tasks:
+    post:
+      operationId: submitTask
+      summary: Submit a sandboxed compute task
+      tags: [Tasks]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskSubmit"
+      responses:
+        "202":
+          description: Task accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskSubmitResponse"
+        "402":
+          description: Insufficient balance
+
+  /tasks/{task_id}:
+    get:
+      operationId: getTask
+      summary: Get task status and result
+      tags: [Tasks]
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Task status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskStatus"
+        "404":
+          description: Not found
+
+  /wallet/balance:
+    get:
+      operationId: getBalance
+      summary: Get MEMEX wallet balance
+      tags: [Wallet]
+      parameters:
+        - name: agent_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Balance info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WalletBalance"
+
+  /wallet/transfer:
+    post:
+      operationId: transfer
+      summary: Transfer MEMEX between agents
+      tags: [Wallet]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Transfer"
+      responses:
+        "200":
+          description: Transfer complete
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  tx_id:
+                    type: string
+        "402":
+          description: Insufficient balance
+
+  /faucet/claim:
+    post:
+      operationId: faucetClaim
+      summary: Claim starter MEMEX tokens (one-time per agent)
+      tags: [Faucet]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FaucetClaim"
+      responses:
+        "200":
+          description: Claimed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  amount:
+                    type: number
+        "409":
+          description: Already claimed
+
+  /missions/claim:
+    post:
+      operationId: missionClaim
+      summary: Claim mission reward
+      tags: [Missions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MissionClaim"
+      responses:
+        "200":
+          description: Mission reward claimed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  mission_id:
+                    type: string
+                  amount:
+                    type: number
+
+  /governance/proposals:
+    post:
+      operationId: createProposal
+      summary: Create governance proposal
+      tags: [Governance]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProposalCreate"
+      responses:
+        "200":
+          description: Proposal created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  proposal_id:
+                    type: string
+                  status:
+                    type: string
+        "403":
+          description: Insufficient stake
+    get:
+      operationId: listProposals
+      summary: List all governance proposals
+      tags: [Governance]
+      responses:
+        "200":
+          description: Proposals list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  proposals:
+                    type: array
+                    items:
+                      type: object
+
+  /governance/proposals/{proposal_id}/vote:
+    post:
+      operationId: voteOnProposal
+      summary: Vote on a governance proposal
+      tags: [Governance]
+      parameters:
+        - name: proposal_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Vote"
+      responses:
+        "200":
+          description: Vote recorded
+        "403":
+          description: Must have staked MEMEX
+
+  /config:
+    get:
+      operationId: getConfig
+      summary: Get current and scheduled protocol configuration
+      tags: [Config]
+      responses:
+        "200":
+          description: Configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Config"
+
+  /node/status:
+    get:
+      operationId: getNodeStatus
+      summary: Node health and status
+      tags: [Node]
+      responses:
+        "200":
+          description: Node status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NodeStatus"
+
+  /peers:
+    get:
+      operationId: getPeers
+      summary: List connected peers
+      tags: [Peers]
+      responses:
+        "200":
+          description: Peer list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PeerList"

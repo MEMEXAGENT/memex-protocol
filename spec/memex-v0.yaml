@@ -1,0 +1,99 @@
+protocol:
+  name: MEMEX
+  version: "0.1.0"
+  description: Decentralized vector memory and compute protocol for AI agents
+
+tokenomics:
+  token:
+    name: MEMEX
+    symbol: MEMEX
+    max_supply: 1_000_000_000
+  allocation:
+    reward_pool: 0.60      # 600,000,000 — 10-year linear release
+    ecosystem: 0.25        # 250,000,000 — faucet, missions, partnerships
+    treasury: 0.15         # 150,000,000 — protocol maintenance & dev
+
+economy:
+  fees:
+    split:
+      validators: 0.70
+      contributors: 0.20
+      treasury: 0.10
+    prices:
+      vectors_store:
+        type: flat
+        amount: 0.01
+      vectors_search:
+        type: flat
+        amount: 0.0001
+      tasks:
+        type: flat
+        amount: 0.01
+  staking:
+    min_stake: 10
+    slash:
+      malicious: 0.20       # 20% slash for malicious behavior
+      bad_submission: 0.50   # 50% slash for bad task submission
+    validator_selection: "sqrt(stake) / sum(sqrt(all_stakes))"
+  rewards:
+    release_years: 10
+    distribution:
+      validators: 0.80
+      treasury: 0.20
+
+network:
+  peer_discovery:
+    method: gossip
+    bootstrap:
+      - addr: "bootstrap1.memex.local:9000"
+      - addr: "bootstrap2.memex.local:9000"
+  consensus: simple_majority
+
+acquisition:
+  faucet:
+    per_agent: 1
+    one_time: true
+  missions:
+    - id: moltask_share_spec
+      reward: 2
+      description: Share protocol specification
+    - id: moltask_integrate_memex
+      reward: 5
+      description: Integrate MEMEX into an agent
+  validation_rewards: see economy.rewards
+  content_rewards: proportional to vector usage
+  p2p_transfer: wallet/transfer endpoint
+
+governance:
+  proposals:
+    min_stake_to_propose: 10
+    modifiable_params:
+      - economy.fees.prices.vectors_store.flat
+      - economy.fees.prices.vectors_search.flat
+      - economy.fees.prices.tasks.flat
+      - economy.staking.min_stake
+  voting:
+    type: stake_weighted
+    quorum_ratio: 0.20
+    pass_ratio: 0.67
+    voting_period_epoch: 100
+  activation:
+    delay_epoch: 50
+    config_endpoint: GET /api/v0/config
+
+api_costs:
+  "POST /api/v0/vectors": 0.01
+  "POST /api/v0/vectors/search": 0.0001
+  "POST /api/v0/tasks": 0.01
+  "GET /api/v0/vectors/:id": 0
+  "GET /api/v0/tasks/:id": 0
+  "GET /api/v0/wallet/balance": 0
+  "POST /api/v0/wallet/transfer": 0
+  "POST /api/v0/faucet/claim": 0
+  "POST /api/v0/missions/claim": 0
+  "POST /api/v0/governance/proposals": 0
+  "GET /api/v0/governance/proposals": 0
+  "POST /api/v0/governance/proposals/:id/vote": 0
+  "GET /api/v0/config": 0
+  "GET /api/v0/node/status": 0
+  "GET /api/v0/peers": 0
