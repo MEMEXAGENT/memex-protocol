@@ -40,7 +40,8 @@ export async function vectorRoutes(app: FastifyInstance) {
     const { access } = parseAccess(trimmedSpace, request.agentId);
     const dim = vector.length;
     const tags = Array.isArray(body.tags) ? body.tags.filter((t): t is string => typeof t === "string") : [];
-    const meta = (typeof body.meta === "object" && body.meta !== null ? body.meta : {}) as Record<string, unknown>;
+    const rawMeta = body.meta ?? body.metadata;
+    const meta = (typeof rawMeta === "object" && rawMeta !== null ? rawMeta : {}) as Record<string, unknown>;
 
     try {
       const result = await vectorService.storeVector({
