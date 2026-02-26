@@ -38,6 +38,9 @@ components:
       properties:
         space:
           type: string
+          description: >
+            Space name. Use "private:<agent_id>" for private spaces (only owner can read/write/search).
+            Any other name (e.g. "world", "knowledge") is a public space accessible by all agents.
         dim:
           type: integer
         vector:
@@ -63,6 +66,9 @@ components:
           type: string
         space:
           type: string
+        access:
+          type: string
+          enum: [public, private]
         dim:
           type: integer
         created_at:
@@ -77,6 +83,9 @@ components:
           type: string
         space:
           type: string
+        access:
+          type: string
+          enum: [public, private]
         dim:
           type: integer
         vector:
@@ -99,6 +108,9 @@ components:
       properties:
         space:
           type: string
+          description: >
+            Space to search. Use "private:<agent_id>" to search your own private space.
+            Public spaces are accessible by all agents. Searching another agent's private space returns 403.
         query_vector:
           type: array
           items:
@@ -359,6 +371,8 @@ paths:
                 $ref: "#/components/schemas/VectorStoreResponse"
         "402":
           description: Insufficient balance
+        "403":
+          description: Cannot write to another agent's private space
           content:
             application/json:
               schema:
@@ -386,6 +400,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/VectorGet"
+        "403":
+          description: Private vector owned by another agent
         "404":
           description: Not found
 
@@ -409,6 +425,8 @@ paths:
                 $ref: "#/components/schemas/VectorSearchResponse"
         "402":
           description: Insufficient balance
+        "403":
+          description: Cannot search another agent's private space
 
   /tasks:
     post:

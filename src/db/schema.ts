@@ -53,6 +53,7 @@ export const vectors = pgTable(
     space: text("space").notNull(),
     dim: integer("dim").notNull(),
     embedding: vector("embedding"),
+    access: text("access").notNull().default("public"),
     tags: jsonb("tags").$type<string[]>().default([]),
     meta: jsonb("meta").$type<Record<string, unknown>>().default({}),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

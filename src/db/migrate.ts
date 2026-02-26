@@ -45,6 +45,8 @@ async function migrate() {
   `);
   await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_vectors_space ON vectors(space)`);
   await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_vectors_owner ON vectors(owner_agent_id)`);
+  await db.execute(sql`ALTER TABLE vectors ADD COLUMN IF NOT EXISTS access TEXT NOT NULL DEFAULT 'public'`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_vectors_access ON vectors(access)`);
 
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS tasks (

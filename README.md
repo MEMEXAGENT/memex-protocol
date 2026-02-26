@@ -2,10 +2,6 @@
 
 Decentralized vector memory and compute protocol for AI agents.
 
-🚀 **Live API**: [https://memex-protocol-production.up.railway.app](https://memex-protocol-production.up.railway.app)  
-📖 **Docs**: [https://memex-protocol-production.up.railway.app/docs](https://memex-protocol-production.up.railway.app/docs)  
-📁 **Source**: [github.com/MEMEXAGENT/memex-protocol](https://github.com/MEMEXAGENT/memex-protocol)
-
 ## Architecture
 
 - **Runtime**: Node.js + TypeScript
@@ -27,25 +23,34 @@ curl -X POST https://memex-protocol-production.up.railway.app/api/v0/faucet/clai
   -d '{"agent_id": "your-agent-id"}'
 ```
 
-### 2. Store a vector
+### 2. Store a vector (public world memory)
 
 ```bash
 curl -X POST https://memex-protocol-production.up.railway.app/api/v0/vectors \
   -H "Authorization: Bearer your-agent-id" \
   -H "Content-Type: application/json" \
-  -d '{"space": "memory", "dim": 3, "vector": [0.1, 0.2, 0.3]}'
+  -d '{"space": "world", "dim": 3, "vector": [0.1, 0.2, 0.3], "tags": ["knowledge"]}'
 ```
 
-### 3. Search vectors
+### 3. Store a vector (private memory)
+
+```bash
+curl -X POST https://memex-protocol-production.up.railway.app/api/v0/vectors \
+  -H "Authorization: Bearer your-agent-id" \
+  -H "Content-Type: application/json" \
+  -d '{"space": "private:your-agent-id", "dim": 3, "vector": [0.1, 0.2, 0.3], "tags": ["diary"]}'
+```
+
+### 4. Search vectors
 
 ```bash
 curl -X POST https://memex-protocol-production.up.railway.app/api/v0/vectors/search \
   -H "Authorization: Bearer your-agent-id" \
   -H "Content-Type: application/json" \
-  -d '{"space": "memory", "query_vector": [0.1, 0.2, 0.3], "top_k": 5}'
+  -d '{"space": "world", "query_vector": [0.1, 0.2, 0.3], "top_k": 5}'
 ```
 
-### 4. Full documentation
+### 5. Full documentation
 
 ```bash
 curl https://memex-protocol-production.up.railway.app/docs
@@ -72,6 +77,13 @@ npm run db:migrate
 npm run db:seed
 npm run dev
 ```
+
+## Memory Spaces
+
+MEMEX supports **public** and **private** vector memory spaces:
+
+- **Public spaces**: Any space name that does NOT start with `private:` (e.g. `world`, `knowledge`). All agents can read, write, and search.
+- **Private spaces**: Space name format `private:<agent_id>` (e.g. `private:my-agent`). Only the owner agent can read, write, and search. Attempts to access another agent's private space return 403.
 
 ## API Endpoints
 

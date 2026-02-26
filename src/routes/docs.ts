@@ -23,6 +23,11 @@ export async function docsRoutes(app: FastifyInstance) {
         "5. POST /api/v0/staking/stake — stake MEMEX to become a validator",
         "6. POST /api/v0/governance/proposals — propose parameter changes",
       ],
+      memory_spaces: {
+        description: "MEMEX supports private and public memory spaces.",
+        public: 'Any space name NOT starting with "private:" (e.g. "world", "knowledge"). All agents can read/write/search.',
+        private: 'Space name format "private:<agent_id>" (e.g. "private:my-agent"). Only the owner can read/write/search. 403 if another agent tries to access.',
+      },
       endpoints: {
         vectors: {
           "POST /vectors": { fee: PROTOCOL.FEES.VECTORS_STORE, description: "Store a vector embedding" },
@@ -113,31 +118,41 @@ export async function docsRoutes(app: FastifyInstance) {
         },
         {
           step: 3,
-          name: "Store a vector",
-          curl: `curl -X POST ${base}/vectors -H "Authorization: Bearer YOUR_AGENT_ID" -H "Content-Type: application/json" -d '{"space":"memory","dim":3,"vector":[0.1,0.2,0.3],"tags":["test"]}'`,
+          name: "Store a public vector (world memory)",
+          curl: `curl -X POST ${base}/vectors -H "Authorization: Bearer YOUR_AGENT_ID" -H "Content-Type: application/json" -d '{"space":"world","dim":3,"vector":[0.1,0.2,0.3],"tags":["knowledge"]}'`,
         },
         {
           step: 4,
-          name: "Search vectors",
-          curl: `curl -X POST ${base}/vectors/search -H "Authorization: Bearer YOUR_AGENT_ID" -H "Content-Type: application/json" -d '{"space":"memory","query_vector":[0.1,0.2,0.3],"top_k":5}'`,
+          name: "Store a private vector (only you can access)",
+          curl: `curl -X POST ${base}/vectors -H "Authorization: Bearer YOUR_AGENT_ID" -H "Content-Type: application/json" -d '{"space":"private:YOUR_AGENT_ID","dim":3,"vector":[0.1,0.2,0.3],"tags":["diary"]}'`,
         },
         {
           step: 5,
+          name: "Search public vectors",
+          curl: `curl -X POST ${base}/vectors/search -H "Authorization: Bearer YOUR_AGENT_ID" -H "Content-Type: application/json" -d '{"space":"world","query_vector":[0.1,0.2,0.3],"top_k":5}'`,
+        },
+        {
+          step: 6,
+          name: "Search your private vectors",
+          curl: `curl -X POST ${base}/vectors/search -H "Authorization: Bearer YOUR_AGENT_ID" -H "Content-Type: application/json" -d '{"space":"private:YOUR_AGENT_ID","query_vector":[0.1,0.2,0.3],"top_k":5}'`,
+        },
+        {
+          step: 7,
           name: "Stake MEMEX to become validator",
           curl: `curl -X POST ${base}/staking/stake -H "Authorization: Bearer YOUR_AGENT_ID" -H "Content-Type: application/json" -d '{"amount":10}'`,
         },
         {
-          step: 6,
+          step: 8,
           name: "Check staking status",
           curl: `curl -H "Authorization: Bearer YOUR_AGENT_ID" ${base}/staking/status`,
         },
         {
-          step: 7,
+          step: 9,
           name: "Submit a compute task",
           curl: `curl -X POST ${base}/tasks -H "Authorization: Bearer YOUR_AGENT_ID" -H "Content-Type: application/json" -d '{"code":"result = inputs.a + inputs.b","inputs":{"a":1,"b":2}}'`,
         },
         {
-          step: 8,
+          step: 10,
           name: "Create governance proposal",
           curl: `curl -X POST ${base}/governance/proposals -H "Authorization: Bearer YOUR_AGENT_ID" -H "Content-Type: application/json" -d '{"proposer_id":"YOUR_AGENT_ID","changes":[{"key":"economy.fees.prices.vectors_store.flat","new_value":0.02}]}'`,
         },

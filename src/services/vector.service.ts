@@ -1,6 +1,5 @@
 import { db } from "../db/connection.js";
-import { vectors } from "../db/schema.js";
-import { eq, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 export async function storeVector(params: {
@@ -8,6 +7,7 @@ export async function storeVector(params: {
   space: string;
   dim: number;
   vector: number[];
+  access: "private" | "public";
   tags?: string[];
   meta?: Record<string, unknown>;
 }) {
@@ -15,13 +15,14 @@ export async function storeVector(params: {
   const embeddingStr = `[${params.vector.join(",")}]`;
 
   await db.execute(sql`
-    INSERT INTO vectors (vector_id, owner_agent_id, space, dim, embedding, tags, meta)
+    INSERT INTO vectors (vector_id, owner_agent_id, space, dim, embedding, access, tags, meta)
     VALUES (
       ${vectorId},
       ${params.ownerAgentId},
       ${params.space},
       ${params.dim},
       ${embeddingStr}::vector,
+      ${params.access},
       ${JSON.stringify(params.tags ?? [])}::jsonb,
       ${JSON.stringify(params.meta ?? {})}::jsonb
     )
@@ -30,14 +31,15 @@ export async function storeVector(params: {
   return {
     vector_id: vectorId,
     space: params.space,
+    access: params.access,
     dim: params.dim,
     created_at: new Date().toISOString(),
   };
 }
 
-export async function getVector(vectorId: string, includeVector: boolean) {
+export async function getVector(vectorId: string, includeVector: boolean, requestingAgentId: string) {
   const rows = await db.execute(sql`
-    SELECT vector_id, owner_agent_id, space, dim,
+    SELECT vector_id, owner_agent_id, space, dim, access,
            ${includeVector ? sql`embedding::text` : sql`NULL`} as embedding,
            tags, meta, created_at
     FROM vectors WHERE vector_id = ${vectorId}
@@ -46,10 +48,15 @@ export async function getVector(vectorId: string, includeVector: boolean) {
   if (rows.length === 0) return null;
   const row = rows[0] as Record<string, unknown>;
 
+  if (row.access === "private" && row.owner_agent_id !== requestingAgentId) {
+    return "FORBIDDEN" as const;
+  }
+
   return {
     vector_id: row.vector_id,
     owner_agent_id: row.owner_agent_id,
     space: row.space,
+    access: row.access,
     dim: row.dim,
     vector: includeVector && row.embedding
       ? String(row.embedding).replace(/[[\]]/g, "").split(",").map(Number)
@@ -64,6 +71,7 @@ export async function searchVectors(params: {
   space: string;
   queryVector: number[];
   topK: number;
+  requestingAgentId: string;
   filterTags?: string[];
 }) {
   const embeddingStr = `[${params.queryVector.join(",")}]`;
@@ -75,7 +83,9 @@ export async function searchVectors(params: {
     SELECT vector_id, tags, meta,
            1 - (embedding <=> ${embeddingStr}::vector) AS score
     FROM vectors
-    WHERE space = ${params.space} ${tagFilter}
+    WHERE space = ${params.space}
+      AND (access = 'public' OR owner_agent_id = ${params.requestingAgentId})
+      ${tagFilter}
     ORDER BY embedding <=> ${embeddingStr}::vector
     LIMIT ${params.topK}
   `);
