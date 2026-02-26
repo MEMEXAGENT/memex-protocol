@@ -1,27 +1,38 @@
 import type { FastifyInstance } from "fastify";
 import { authMiddleware } from "../middleware/auth.js";
 import { feeMiddleware } from "../middleware/fee.js";
+import { AppError } from "../utils/errors.js";
 import * as vectorService from "../services/vector.service.js";
 
 export async function vectorRoutes(app: FastifyInstance) {
   app.post("/vectors", {
     preHandler: [authMiddleware, feeMiddleware("POST /api/v0/vectors")],
   }, async (request, reply) => {
-    const body = request.body as {
-      space: string;
-      dim: number;
-      vector: number[];
-      tags?: string[];
-      meta?: { origin_hash?: string; ttl_s?: number };
-    };
+    const body = (request.body ?? {}) as Record<string, unknown>;
+
+    const space = body.space;
+    if (typeof space !== "string" || !space.trim()) {
+      throw new AppError(400, "BAD_REQUEST", "Missing required field: space (string)");
+    }
+
+    const vector = body.vector;
+    if (!Array.isArray(vector) || vector.length === 0 || !vector.every((v) => typeof v === "number")) {
+      throw new AppError(400, "BAD_REQUEST",
+        "Missing or invalid field: vector (number[]). Example: {\"space\": \"memory\", \"dim\": 3, \"vector\": [0.1, 0.2, 0.3]}");
+    }
+
+    const dim = typeof body.dim === "number" ? body.dim : vector.length;
+
+    const tags = Array.isArray(body.tags) ? body.tags.filter((t): t is string => typeof t === "string") : [];
+    const meta = (typeof body.meta === "object" && body.meta !== null ? body.meta : {}) as Record<string, unknown>;
 
     const result = await vectorService.storeVector({
       ownerAgentId: request.agentId,
-      space: body.space,
-      dim: body.dim,
-      vector: body.vector,
-      tags: body.tags,
-      meta: body.meta,
+      space: space.trim(),
+      dim,
+      vector,
+      tags,
+      meta,
     });
 
     return reply.status(201).send(result);
@@ -43,18 +54,27 @@ export async function vectorRoutes(app: FastifyInstance) {
   app.post("/vectors/search", {
     preHandler: [authMiddleware, feeMiddleware("POST /api/v0/vectors/search")],
   }, async (request) => {
-    const body = request.body as {
-      space: string;
-      query_vector: number[];
-      top_k: number;
-      filter_tags?: string[];
-    };
+    const body = (request.body ?? {}) as Record<string, unknown>;
+
+    const space = body.space;
+    if (typeof space !== "string" || !space.trim()) {
+      throw new AppError(400, "BAD_REQUEST", "Missing required field: space (string)");
+    }
+
+    const queryVector = body.query_vector;
+    if (!Array.isArray(queryVector) || queryVector.length === 0 || !queryVector.every((v) => typeof v === "number")) {
+      throw new AppError(400, "BAD_REQUEST",
+        "Missing or invalid field: query_vector (number[]). Example: {\"space\": \"memory\", \"query_vector\": [0.1, 0.2, 0.3], \"top_k\": 5}");
+    }
+
+    const topK = typeof body.top_k === "number" && body.top_k > 0 ? body.top_k : 10;
+    const filterTags = Array.isArray(body.filter_tags) ? body.filter_tags.filter((t): t is string => typeof t === "string") : undefined;
 
     return vectorService.searchVectors({
-      space: body.space,
-      queryVector: body.query_vector,
-      topK: body.top_k,
-      filterTags: body.filter_tags,
+      space: space.trim(),
+      queryVector,
+      topK,
+      filterTags,
     });
   });
 }

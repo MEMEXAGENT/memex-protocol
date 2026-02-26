@@ -5,12 +5,26 @@ import { eq } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { PROTOCOL } from "../config.js";
-import { alreadyClaimed } from "../utils/errors.js";
+import { AppError, alreadyClaimed } from "../utils/errors.js";
+
+function extractAgentId(request: { headers: { authorization?: string }; body: unknown }): string {
+  const body = (request.body ?? {}) as Record<string, unknown>;
+  if (typeof body.agent_id === "string" && body.agent_id.trim()) {
+    return body.agent_id.trim();
+  }
+
+  const authHeader = request.headers.authorization;
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.slice(7).trim();
+    if (token) return token;
+  }
+
+  throw new AppError(400, "BAD_REQUEST", "agent_id is required (in body or Authorization header)");
+}
 
 export async function faucetRoutes(app: FastifyInstance) {
   app.post("/faucet/claim", async (request, reply) => {
-    const body = request.body as { agent_id: string };
-    const agentId = body.agent_id;
+    const agentId = extractAgentId(request);
 
     await db.insert(agents).values({ agentId }).onConflictDoNothing();
     await db.insert(wallets).values({ agentId, balance: "0", staked: "0", available: "0" }).onConflictDoNothing();
@@ -39,6 +53,6 @@ export async function faucetRoutes(app: FastifyInstance) {
       txType: "faucet",
     });
 
-    return { status: "claimed", amount };
+    return { status: "claimed", agent_id: agentId, amount };
   });
 }
