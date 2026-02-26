@@ -3,6 +3,7 @@ import { authMiddleware } from "../middleware/auth.js";
 import { feeMiddleware } from "../middleware/fee.js";
 import { AppError } from "../utils/errors.js";
 import * as vectorService from "../services/vector.service.js";
+import { DimensionMismatchError } from "../services/vector.service.js";
 
 const PRIVATE_PREFIX = "private:";
 
@@ -37,21 +38,27 @@ export async function vectorRoutes(app: FastifyInstance) {
 
     const trimmedSpace = space.trim();
     const { access } = parseAccess(trimmedSpace, request.agentId);
-    const dim = typeof body.dim === "number" ? body.dim : vector.length;
+    const dim = vector.length;
     const tags = Array.isArray(body.tags) ? body.tags.filter((t): t is string => typeof t === "string") : [];
     const meta = (typeof body.meta === "object" && body.meta !== null ? body.meta : {}) as Record<string, unknown>;
 
-    const result = await vectorService.storeVector({
-      ownerAgentId: request.agentId,
-      space: trimmedSpace,
-      dim,
-      vector,
-      access,
-      tags,
-      meta,
-    });
-
-    return reply.status(201).send(result);
+    try {
+      const result = await vectorService.storeVector({
+        ownerAgentId: request.agentId,
+        space: trimmedSpace,
+        dim,
+        vector,
+        access,
+        tags,
+        meta,
+      });
+      return reply.status(201).send(result);
+    } catch (err) {
+      if (err instanceof DimensionMismatchError) {
+        throw new AppError(400, "DIMENSION_MISMATCH", err.message);
+      }
+      throw err;
+    }
   });
 
   app.get("/vectors/:vector_id", {

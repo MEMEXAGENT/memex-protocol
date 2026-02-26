@@ -11,6 +11,16 @@ export async function storeVector(params: {
   tags?: string[];
   meta?: Record<string, unknown>;
 }) {
+  const existing = await db.execute(sql`
+    SELECT dim FROM vectors WHERE space = ${params.space} LIMIT 1
+  `);
+  if (existing.length > 0) {
+    const existingDim = (existing[0] as Record<string, unknown>).dim as number;
+    if (existingDim !== params.dim) {
+      throw new DimensionMismatchError(params.space, existingDim, params.dim);
+    }
+  }
+
   const vectorId = nanoid();
   const embeddingStr = `[${params.vector.join(",")}]`;
 
@@ -35,6 +45,19 @@ export async function storeVector(params: {
     dim: params.dim,
     created_at: new Date().toISOString(),
   };
+}
+
+export class DimensionMismatchError extends Error {
+  public spaceName: string;
+  public expectedDim: number;
+  public receivedDim: number;
+  constructor(space: string, expected: number, received: number) {
+    super(`Space "${space}" requires ${expected}-dimensional vectors, but received ${received}-dimensional`);
+    this.name = "DimensionMismatchError";
+    this.spaceName = space;
+    this.expectedDim = expected;
+    this.receivedDim = received;
+  }
 }
 
 export async function getVector(vectorId: string, includeVector: boolean, requestingAgentId: string) {
@@ -79,11 +102,14 @@ export async function searchVectors(params: {
     ? sql`AND tags ?| ${sql.raw(`ARRAY[${params.filterTags.map((t) => `'${t}'`).join(",")}]`)}`
     : sql``;
 
+  const queryDim = params.queryVector.length;
+
   const rows = await db.execute(sql`
     SELECT vector_id, tags, meta,
            1 - (embedding <=> ${embeddingStr}::vector) AS score
     FROM vectors
     WHERE space = ${params.space}
+      AND dim = ${queryDim}
       AND (access = 'public' OR owner_agent_id = ${params.requestingAgentId})
       ${tagFilter}
     ORDER BY embedding <=> ${embeddingStr}::vector
