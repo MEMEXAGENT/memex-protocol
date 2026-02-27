@@ -15,7 +15,11 @@ import { founderRoutes } from "./routes/founder.js";
 import { stakingRoutes } from "./routes/staking.js";
 import { docsRoutes } from "./routes/docs.js";
 
-const app = Fastify({ logger: true });
+const app = Fastify({
+  logger: true,
+  bodyLimit: 4 * 1024 * 1024,
+  requestTimeout: 30_000,
+});
 
 await app.register(cors, { origin: true });
 
