@@ -58,10 +58,6 @@ async function migrate() {
   }
 
   await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_vectors_dim ON vectors(dim)`);
-  await db.execute(sql`
-    CREATE INDEX IF NOT EXISTS idx_vectors_embedding_hnsw
-    ON vectors USING hnsw (embedding vector_cosine_ops)
-  `);
 
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS tasks (
