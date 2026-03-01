@@ -31,7 +31,7 @@ app.addContentTypeParser(
   "application/json",
   { parseAs: "buffer" },
   (req, body, done) => {
-    rawBodyStore.set(req, body as Buffer);
+    rawBodyStore.set(req.raw, body as Buffer);
     try {
       const json = JSON.parse((body as Buffer).toString());
       done(null, json);
