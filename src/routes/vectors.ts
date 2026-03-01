@@ -2,12 +2,21 @@ import type { FastifyInstance } from "fastify";
 import { authMiddleware } from "../middleware/auth.js";
 import { feeMiddleware } from "../middleware/fee.js";
 import { AppError } from "../utils/errors.js";
+import { ENV } from "../config.js";
 import * as vectorService from "../services/vector.service.js";
 import { DimensionMismatchError } from "../services/vector.service.js";
 
 const PRIVATE_PREFIX = "private:";
+const TEAM_PREFIX = "team:";
 
 function parseAccess(space: string, agentId: string): { access: "private" | "public" } {
+  if (space.startsWith(TEAM_PREFIX)) {
+    if (ENV.TEAM_SPACE_MEMBERS.size > 0 && !ENV.TEAM_SPACE_MEMBERS.has(agentId)) {
+      throw new AppError(403, "FORBIDDEN",
+        "You are not a member of this team space. Contact the team owner for access.");
+    }
+    return { access: "private" };
+  }
   if (!space.startsWith(PRIVATE_PREFIX)) {
     return { access: "public" };
   }

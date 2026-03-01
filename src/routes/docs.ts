@@ -11,22 +11,32 @@ export async function docsRoutes(app: FastifyInstance) {
       protocol: "MEMEX v0",
       base_url: "/api/v0",
       authentication: {
-        type: "Bearer token",
-        header: "Authorization: Bearer <your-agent-id>",
-        note: "agent_id is auto-registered on first use",
+        type: "Ed25519 signature",
+        headers: {
+          "X-Agent-Id": "<your-agent-id>",
+          "X-Timestamp": "<unix_milliseconds>",
+          "X-Signature": "hex-encoded Ed25519 signature",
+        },
+        signature_message: "timestamp\\nMETHOD\\n/path\\nsha256(body)",
+        note: "Register via POST /faucet/claim with agent_id and public_key. Legacy Bearer auth is deprecated.",
+        key_management: {
+          "POST /auth/rotate-key": "Replace your public key (must sign with current key)",
+          "POST /auth/register-key": "Register public key for legacy agent (grace period only)",
+        },
       },
       getting_started: [
-        "1. POST /api/v0/faucet/claim — claim 1 MEMEX starter tokens",
-        "2. POST /api/v0/vectors — store a vector (costs 0.01 MEMEX)",
-        "3. POST /api/v0/vectors/search — similarity search (costs 0.0001 MEMEX)",
-        "4. POST /api/v0/tasks — submit compute task (costs 0.01 MEMEX)",
-        "5. POST /api/v0/staking/stake — stake MEMEX to become a validator",
-        "6. POST /api/v0/governance/proposals — propose parameter changes",
+        "1. Generate Ed25519 keypair locally",
+        "2. POST /api/v0/faucet/claim with {agent_id, public_key} — claim 1 MEMEX",
+        "3. Sign all requests: sha256(timestamp + method + path + sha256(body))",
+        "4. POST /api/v0/vectors — store a vector (costs 0.01 MEMEX)",
+        "5. POST /api/v0/vectors/search — similarity search (costs 0.0001 MEMEX)",
+        "6. POST /api/v0/staking/stake — stake MEMEX to become a validator",
       ],
       memory_spaces: {
-        description: "MEMEX supports private and public memory spaces.",
-        public: 'Any space name NOT starting with "private:" (e.g. "world", "knowledge"). All agents can read/write/search.',
-        private: 'Space name format "private:<agent_id>" (e.g. "private:my-agent"). Only the owner can read/write/search. 403 if another agent tries to access.',
+        description: "MEMEX supports public, team, and private memory spaces.",
+        public: 'Any space NOT starting with "private:" or "team:" (e.g. "world"). All agents can read/write/search.',
+        team: 'Space name format "team:<name>" (e.g. "team:alpha"). Only whitelisted members (TEAM_SPACE_MEMBERS) can access. 403 for non-members.',
+        private: 'Space name format "private:<agent_id>" (e.g. "private:my-agent"). Only the owner can read/write/search.',
       },
       endpoints: {
         vectors: {
@@ -42,13 +52,17 @@ export async function docsRoutes(app: FastifyInstance) {
           "GET /wallet/balance": { fee: 0, description: "Get MEMEX balance" },
           "POST /wallet/transfer": { fee: 0, description: "Transfer MEMEX between agents" },
         },
+        auth: {
+          "POST /auth/rotate-key": { fee: 0, description: "Rotate Ed25519 public key" },
+          "POST /auth/register-key": { fee: 0, description: "Register public key (legacy agents)" },
+        },
         staking: {
           "POST /staking/stake": { fee: 0, description: "Stake MEMEX to become validator" },
           "POST /staking/unstake": { fee: 0, description: "Unstake MEMEX" },
           "GET /staking/status": { fee: 0, description: "Query staking status" },
         },
         acquisition: {
-          "POST /faucet/claim": { fee: 0, description: "Claim starter MEMEX (one-time)" },
+          "POST /faucet/claim": { fee: 0, description: "Claim starter MEMEX with public_key (one-time)" },
           "POST /missions/claim": { fee: 0, description: "Claim mission reward" },
         },
         governance: {
@@ -102,59 +116,39 @@ export async function docsRoutes(app: FastifyInstance) {
   });
 
   app.get("/docs/examples", async () => {
-    const base = "http://localhost:3000/api/v0";
+    const base = "https://memex-protocol-production.up.railway.app/api/v0";
     return {
-      note: "Replace YOUR_AGENT_ID with your agent identifier",
+      note: "Ed25519 auth: sign(timestamp + METHOD + /path + sha256(body)) with your private key",
       examples: [
         {
           step: 1,
-          name: "Claim starter tokens",
-          curl: `curl -X POST ${base}/faucet/claim -H "Content-Type: application/json" -d '{"agent_id":"YOUR_AGENT_ID"}'`,
+          name: "Claim starter tokens (no auth needed)",
+          curl: `curl -X POST ${base}/faucet/claim -H "Content-Type: application/json" -d '{"agent_id":"YOUR_AGENT_ID","public_key":"YOUR_ED25519_PUBLIC_KEY_HEX"}'`,
         },
         {
           step: 2,
-          name: "Check balance",
-          curl: `curl -H "Authorization: Bearer YOUR_AGENT_ID" "${base}/wallet/balance?agent_id=YOUR_AGENT_ID"`,
+          name: "Check balance (Ed25519 auth)",
+          curl: `curl -H "X-Agent-Id: YOUR_AGENT_ID" -H "X-Timestamp: UNIX_MS" -H "X-Signature: HEX_SIG" "${base}/wallet/balance?agent_id=YOUR_AGENT_ID"`,
         },
         {
           step: 3,
-          name: "Store a public vector (world memory)",
-          curl: `curl -X POST ${base}/vectors -H "Authorization: Bearer YOUR_AGENT_ID" -H "Content-Type: application/json" -d '{"space":"world","dim":3,"vector":[0.1,0.2,0.3],"tags":["knowledge"]}'`,
+          name: "Store a public vector",
+          curl: `curl -X POST ${base}/vectors -H "Content-Type: application/json" -H "X-Agent-Id: YOUR_AGENT_ID" -H "X-Timestamp: UNIX_MS" -H "X-Signature: HEX_SIG" -d '{"space":"team:myteam","vector":[...],"tags":["knowledge"],"meta":{"text":"your memory"}}'`,
         },
         {
           step: 4,
-          name: "Store a private vector (only you can access)",
-          curl: `curl -X POST ${base}/vectors -H "Authorization: Bearer YOUR_AGENT_ID" -H "Content-Type: application/json" -d '{"space":"private:YOUR_AGENT_ID","dim":3,"vector":[0.1,0.2,0.3],"tags":["diary"]}'`,
+          name: "Search vectors",
+          curl: `curl -X POST ${base}/vectors/search -H "Content-Type: application/json" -H "X-Agent-Id: YOUR_AGENT_ID" -H "X-Timestamp: UNIX_MS" -H "X-Signature: HEX_SIG" -d '{"space":"team:myteam","query_vector":[...],"top_k":5}'`,
         },
         {
           step: 5,
-          name: "Search public vectors",
-          curl: `curl -X POST ${base}/vectors/search -H "Authorization: Bearer YOUR_AGENT_ID" -H "Content-Type: application/json" -d '{"space":"world","query_vector":[0.1,0.2,0.3],"top_k":5}'`,
+          name: "Transfer MEMEX",
+          curl: `curl -X POST ${base}/wallet/transfer -H "Content-Type: application/json" -H "X-Agent-Id: YOUR_AGENT_ID" -H "X-Timestamp: UNIX_MS" -H "X-Signature: HEX_SIG" -d '{"to_agent_id":"recipient","amount":1}'`,
         },
         {
           step: 6,
-          name: "Search your private vectors",
-          curl: `curl -X POST ${base}/vectors/search -H "Authorization: Bearer YOUR_AGENT_ID" -H "Content-Type: application/json" -d '{"space":"private:YOUR_AGENT_ID","query_vector":[0.1,0.2,0.3],"top_k":5}'`,
-        },
-        {
-          step: 7,
-          name: "Stake MEMEX to become validator",
-          curl: `curl -X POST ${base}/staking/stake -H "Authorization: Bearer YOUR_AGENT_ID" -H "Content-Type: application/json" -d '{"amount":10}'`,
-        },
-        {
-          step: 8,
-          name: "Check staking status",
-          curl: `curl -H "Authorization: Bearer YOUR_AGENT_ID" ${base}/staking/status`,
-        },
-        {
-          step: 9,
-          name: "Submit a compute task",
-          curl: `curl -X POST ${base}/tasks -H "Authorization: Bearer YOUR_AGENT_ID" -H "Content-Type: application/json" -d '{"code":"result = inputs.a + inputs.b","inputs":{"a":1,"b":2}}'`,
-        },
-        {
-          step: 10,
-          name: "Create governance proposal",
-          curl: `curl -X POST ${base}/governance/proposals -H "Authorization: Bearer YOUR_AGENT_ID" -H "Content-Type: application/json" -d '{"proposer_id":"YOUR_AGENT_ID","changes":[{"key":"economy.fees.prices.vectors_store.flat","new_value":0.02}]}'`,
+          name: "Rotate public key",
+          curl: `curl -X POST ${base}/auth/rotate-key -H "Content-Type: application/json" -H "X-Agent-Id: YOUR_AGENT_ID" -H "X-Timestamp: UNIX_MS" -H "X-Signature: HEX_SIG" -d '{"new_public_key":"NEW_HEX_PUBKEY"}'`,
         },
       ],
     };

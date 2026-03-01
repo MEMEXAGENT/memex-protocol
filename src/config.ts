@@ -10,6 +10,9 @@ export const ENV = {
   FOUNDER_INITIAL_STAKE: Number(process.env.FOUNDER_INITIAL_STAKE ?? 10_000),
   AUTH_REQUIRE_SIGNATURE: process.env.AUTH_REQUIRE_SIGNATURE === "true",
   AUTH_TIMESTAMP_WINDOW_MS: Number(process.env.AUTH_TIMESTAMP_WINDOW_MS ?? 5 * 60 * 1000),
+  TEAM_SPACE_MEMBERS: new Set(
+    (process.env.TEAM_SPACE_MEMBERS || "").split(",").map(s => s.trim()).filter(Boolean)
+  ),
 } as const;
 
 export const PROTOCOL = {
