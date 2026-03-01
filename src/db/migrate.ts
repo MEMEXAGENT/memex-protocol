@@ -22,6 +22,26 @@ async function migrate() {
     )
   `);
 
+  // ── Auth security upgrade: Ed25519 decentralized auth ──
+  await db.execute(sql`ALTER TABLE agents ADD COLUMN IF NOT EXISTS last_auth_at TIMESTAMPTZ`);
+  await db.execute(sql`ALTER TABLE agents ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE`);
+
+  // ── Audit log for authentication events ──
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS auth_audit_log (
+      id TEXT PRIMARY KEY,
+      agent_id TEXT,
+      action TEXT NOT NULL,
+      success BOOLEAN NOT NULL,
+      ip_address TEXT,
+      user_agent TEXT,
+      detail TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_auth_audit_agent ON auth_audit_log(agent_id)`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_auth_audit_created ON auth_audit_log(created_at)`);
+
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS wallets (
       agent_id TEXT PRIMARY KEY REFERENCES agents(agent_id),

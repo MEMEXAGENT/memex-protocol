@@ -13,6 +13,7 @@ import { nodeRoutes } from "./routes/node.js";
 import { peerRoutes } from "./routes/peers.js";
 import { founderRoutes } from "./routes/founder.js";
 import { stakingRoutes } from "./routes/staking.js";
+import { authRoutes } from "./routes/auth.js";
 import { docsRoutes } from "./routes/docs.js";
 
 const app = Fastify({
@@ -22,6 +23,23 @@ const app = Fastify({
 });
 
 await app.register(cors, { origin: true });
+
+const rawBodyStore = new WeakMap<object, Buffer>();
+export { rawBodyStore };
+
+app.addContentTypeParser(
+  "application/json",
+  { parseAs: "buffer" },
+  (req, body, done) => {
+    rawBodyStore.set(req, body as Buffer);
+    try {
+      const json = JSON.parse((body as Buffer).toString());
+      done(null, json);
+    } catch (err) {
+      done(err as Error, undefined);
+    }
+  },
+);
 
 app.setErrorHandler((error, _request, reply) => {
   if (error instanceof AppError) {
@@ -48,6 +66,7 @@ await app.register(nodeRoutes, { prefix: "/api/v0" });
 await app.register(peerRoutes, { prefix: "/api/v0" });
 await app.register(founderRoutes, { prefix: "/api/v0" });
 await app.register(stakingRoutes, { prefix: "/api/v0" });
+await app.register(authRoutes, { prefix: "/api/v0" });
 await app.register(docsRoutes);
 
 app.get("/health", async () => ({ status: "ok", version: "0.1.0" }));

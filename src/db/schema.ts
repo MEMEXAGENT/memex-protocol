@@ -31,6 +31,8 @@ const vector = customType<{ data: number[]; driverParam: string }>({
 export const agents = pgTable("agents", {
   agentId: text("agent_id").primaryKey(),
   publicKey: text("public_key"),
+  lastAuthAt: timestamp("last_auth_at", { withTimezone: true }),
+  isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -171,3 +173,23 @@ export const peers = pgTable("peers", {
   status: text("st").notNull().default("active"),
   lastSeen: timestamp("last_seen", { withTimezone: true }).defaultNow().notNull(),
 });
+
+// ─── Auth Audit Log ───
+
+export const authAuditLog = pgTable(
+  "auth_audit_log",
+  {
+    id: text("id").primaryKey(),
+    agentId: text("agent_id"),
+    action: text("action").notNull(),
+    success: boolean("success").notNull(),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    detail: text("detail"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_auth_audit_agent").on(table.agentId),
+    index("idx_auth_audit_created").on(table.createdAt),
+  ],
+);

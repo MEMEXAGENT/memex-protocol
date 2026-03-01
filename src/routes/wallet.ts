@@ -30,10 +30,6 @@ export async function walletRoutes(app: FastifyInstance) {
       throw new AppError(400, "BAD_REQUEST", "Missing or invalid field: amount (positive number)");
     }
 
-    const fromAgentId = (typeof body.from_agent_id === "string" && body.from_agent_id.trim())
-      ? body.from_agent_id.trim()
-      : request.agentId;
-
-    return walletService.transfer(fromAgentId, toAgentId.trim(), amount);
+    return walletService.transfer(request.agentId, toAgentId.trim(), amount);
   });
 }

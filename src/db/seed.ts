@@ -5,6 +5,7 @@ import { agents, wallets, configVersions, peers, transactions } from "./schema.j
 import { nanoid } from "nanoid";
 import { PROTOCOL, ENV } from "../config.js";
 import { sql } from "drizzle-orm";
+import { generateKeyPair } from "../utils/crypto.js";
 
 async function seed() {
   const client = postgres(ENV.DATABASE_URL, { max: 1 });
@@ -54,6 +55,8 @@ async function seed() {
   const founderStake = ENV.FOUNDER_INITIAL_STAKE;
   const founderAvailable = founderFund - founderStake;
 
+  const founderKeyPair = generateKeyPair();
+
   console.log(`[2/4] Creating founder account: ${founderId}`);
   console.log(`       Fund: ${founderFund.toLocaleString()} MEMEX (from treasury)`);
   console.log(`       Stake: ${founderStake.toLocaleString()} MEMEX (first validator)`);
@@ -61,7 +64,7 @@ async function seed() {
 
   await db.insert(agents).values({
     agentId: founderId,
-    publicKey: `founder:${founderId}`,
+    publicKey: founderKeyPair.publicKey,
   }).onConflictDoNothing();
 
   await db.insert(wallets).values({
@@ -131,6 +134,18 @@ async function seed() {
   console.log(`  ──────────────────────────────`);
   console.log(`  Total:        ${PROTOCOL.MAX_SUPPLY.toLocaleString()} MEMEX`);
   console.log("═══════════════════════════════════════\n");
+
+  console.log("╔════════════════════════════════════════════════╗");
+  console.log("║  FOUNDER Ed25519 KEYPAIR (SAVE THIS NOW!)      ║");
+  console.log("╠════════════════════════════════════════════════╣");
+  console.log(`║  Agent ID:    ${founderId}`);
+  console.log(`║  Public Key:  ${founderKeyPair.publicKey}`);
+  console.log(`║  Private Key: ${founderKeyPair.privateKey}`);
+  console.log("╠════════════════════════════════════════════════╣");
+  console.log("║  The PRIVATE KEY will NOT be shown again!      ║");
+  console.log("║  Store it securely. Anyone with this key       ║");
+  console.log("║  can sign requests as the founder.             ║");
+  console.log("╚════════════════════════════════════════════════╝\n");
 
   await client.end();
 }

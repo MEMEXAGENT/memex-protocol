@@ -8,6 +8,8 @@ export const ENV = {
   FOUNDER_SECRET: process.env.FOUNDER_SECRET ?? "",
   FOUNDER_INITIAL_FUND: Number(process.env.FOUNDER_INITIAL_FUND ?? 1_000_000),
   FOUNDER_INITIAL_STAKE: Number(process.env.FOUNDER_INITIAL_STAKE ?? 10_000),
+  AUTH_REQUIRE_SIGNATURE: process.env.AUTH_REQUIRE_SIGNATURE === "true",
+  AUTH_TIMESTAMP_WINDOW_MS: Number(process.env.AUTH_TIMESTAMP_WINDOW_MS ?? 5 * 60 * 1000),
 } as const;
 
 export const PROTOCOL = {
